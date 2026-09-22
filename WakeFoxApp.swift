@@ -30,7 +30,20 @@ private enum MenuStatus {
 
 @MainActor
 final class WakeFoxApp: NSObject, NSApplicationDelegate {
-    private static let statusSymbolName = "network"
+    private struct StatusIconOption {
+        let symbolName: String
+        let title: String
+    }
+
+    private static let statusIconPreferenceKey = "menuBarIconSymbolName"
+    private static let statusIconOptions = [
+        StatusIconOption(symbolName: "network", title: "Network"),
+        StatusIconOption(symbolName: "wifi", title: "Wi-Fi"),
+        StatusIconOption(symbolName: "bolt.horizontal.circle", title: "Wake / Power"),
+        StatusIconOption(symbolName: "antenna.radiowaves.left.and.right", title: "Broadcast"),
+        StatusIconOption(symbolName: "desktopcomputer", title: "Computer"),
+        StatusIconOption(symbolName: "power", title: "Power")
+    ]
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let settingsManager: SettingsManager
@@ -101,6 +114,8 @@ final class WakeFoxApp: NSObject, NSApplicationDelegate {
         settingsItem.target = self
         menu.addItem(settingsItem)
 
+        menu.addItem(makeStatusIconMenuItem())
+
         let loginItemsItem = NSMenuItem(title: "Launch at Login...", action: #selector(openLoginItemsSettings), keyEquivalent: "")
         loginItemsItem.target = self
         menu.addItem(loginItemsItem)
@@ -113,6 +128,44 @@ final class WakeFoxApp: NSObject, NSApplicationDelegate {
 
         statusItem.menu = menu
         applyStatus(currentStatus)
+    }
+
+    private func makeStatusIconMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Menu Bar Icon", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        let selectedSymbolName = selectedStatusSymbolName
+
+        for option in Self.statusIconOptions {
+            let optionItem = NSMenuItem(title: option.title,
+                                        action: #selector(selectStatusIcon(_:)),
+                                        keyEquivalent: "")
+            optionItem.target = self
+            optionItem.representedObject = option.symbolName
+            optionItem.state = option.symbolName == selectedSymbolName ? .on : .off
+            optionItem.image = NSImage(systemSymbolName: option.symbolName,
+                                       accessibilityDescription: option.title)
+            submenu.addItem(optionItem)
+        }
+
+        item.submenu = submenu
+        return item
+    }
+
+    private var selectedStatusSymbolName: String {
+        let storedName = UserDefaults.standard.string(forKey: Self.statusIconPreferenceKey)
+        return Self.statusIconOptions.contains { $0.symbolName == storedName }
+            ? storedName!
+            : Self.statusIconOptions[0].symbolName
+    }
+
+    @objc private func selectStatusIcon(_ sender: NSMenuItem) {
+        guard let symbolName = sender.representedObject as? String,
+              Self.statusIconOptions.contains(where: { $0.symbolName == symbolName }) else {
+            return
+        }
+
+        UserDefaults.standard.set(symbolName, forKey: Self.statusIconPreferenceKey)
+        constructMenu()
     }
 
     @objc private func openSettings() {
@@ -156,7 +209,7 @@ final class WakeFoxApp: NSObject, NSApplicationDelegate {
         currentStatus = status
         guard let button = statusItem.button else { return }
 
-        let baseImage = NSImage(systemSymbolName: Self.statusSymbolName, accessibilityDescription: "Wake on LAN")
+        let baseImage = NSImage(systemSymbolName: selectedStatusSymbolName, accessibilityDescription: "Wake on LAN")
         let whiteConfig = NSImage.SymbolConfiguration(hierarchicalColor: .white)
         let whiteImage = baseImage?.withSymbolConfiguration(whiteConfig) ?? baseImage
         whiteImage?.isTemplate = false
