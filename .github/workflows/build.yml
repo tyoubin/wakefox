@@ -28,10 +28,11 @@ jobs:
           cp Info.plist "$APP_PATH/Contents/Info.plist"
           cp .build/release/WakeFox "$APP_PATH/Contents/MacOS/WakeFox"
           chmod +x "$APP_PATH/Contents/MacOS/WakeFox"
+          ditto -c -k --sequesterRsrc --keepParent WakeFox.app WakeFox.app.zip
 
       - name: Upload app artifact
         uses: actions/upload-artifact@v4
         with:
           name: WakeFox-app
-          path: WakeFox.app
+          path: WakeFox.app.zip
           if-no-files-found: error
