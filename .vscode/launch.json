@@ -1,0 +1,24 @@
+{
+	"configurations": [
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:wakefox}",
+			"name": "Debug WakeFox",
+			"target": "WakeFox",
+			"configuration": "debug",
+			"preLaunchTask": "swift: Build Debug WakeFox"
+		},
+		{
+			"type": "swift",
+			"request": "launch",
+			"args": [],
+			"cwd": "${workspaceFolder:wakefox}",
+			"name": "Release WakeFox",
+			"target": "WakeFox",
+			"configuration": "release",
+			"preLaunchTask": "swift: Build Release WakeFox"
+		}
+	]
+}
