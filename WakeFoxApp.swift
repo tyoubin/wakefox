@@ -74,13 +74,17 @@ final class WakeFoxApp: NSObject, NSApplicationDelegate {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.constructMenu()
+                guard let self else { return }
+                DispatchQueue.main.async {
+                    self.constructMenu()
+                }
             }
         }
     }
 
     private func constructMenu() {
-        let menu = NSMenu()
+        let menu = statusItem.menu ?? NSMenu()
+        menu.removeAllItems()
         let interfaces = settingsManager.getInterfaces()
         let timestamp = timestampFormatter.string(from: Date())
 
@@ -126,7 +130,9 @@ final class WakeFoxApp: NSObject, NSApplicationDelegate {
         quitItem.target = NSApp
         menu.addItem(quitItem)
 
-        statusItem.menu = menu
+        if statusItem.menu !== menu {
+            statusItem.menu = menu
+        }
         applyStatus(currentStatus)
     }
 
@@ -169,12 +175,26 @@ final class WakeFoxApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
-        if settingsWindow == nil {
-            settingsWindow = SettingsWindow(settingsManager: settingsManager) {
+        if let window = settingsWindow {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            let window = SettingsWindow(settingsManager: settingsManager) {
                 NotificationCenter.default.post(name: NSNotification.Name("SettingsChanged"), object: nil)
             }
+            settingsWindow = window
+            window.isReleasedWhenClosed = false
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: window,
+                queue: .main
+            ) { [weak self, weak window] _ in
+                Task { @MainActor [weak self, weak window] in
+                    guard let self, let window, self.settingsWindow === window else { return }
+                    self.settingsWindow = nil
+                }
+            }
+            window.makeKeyAndOrderFront(nil)
         }
-        settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
